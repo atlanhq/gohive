@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"encoding/base64"
 	"fmt"
+	"log"
 	"math/rand"
 	"net/http"
 	"net/url"
@@ -13,10 +14,9 @@ import (
 	"strings"
 	"sync"
 	"time"
-	"log"
 
 	"github.com/apache/thrift/lib/go/thrift"
-	"github.com/beltran/gohive/hiveserver"
+	"github.com/atlanhq/gohive/hiveserver"
 	"github.com/beltran/gosasl"
 	"github.com/go-zookeeper/zk"
 )
@@ -190,7 +190,25 @@ func innerConnect(host string, port int, auth string,
 	}
 
 	if configuration.TransportMode == "http" {
-		if auth == "NONE" {
+		if auth == "DATABRICKS" {
+			httpClient, _, err := getHTTPClient(configuration)
+			if err != nil {
+				return nil, err
+			}
+			httpOptions := thrift.THttpClientOptions{Client: httpClient}
+			transport, err = thrift.NewTHttpClientTransportFactoryWithOptions(fmt.Sprintf("https://%s:%d/"+configuration.HTTPPath, host, port), httpOptions).GetTransport(socket)
+			if err != nil {
+				return nil, err
+			}
+
+			httpTransport, ok := transport.(*thrift.THttpClient)
+			if ok {
+				auth := []byte(fmt.Sprintf("%s:%s", configuration.Username, configuration.Password))
+				authString := base64.RawStdEncoding.EncodeToString(auth)
+
+				httpTransport.SetHeader("Authorization", fmt.Sprintf("Basic %s", authString))
+			}
+		} else if auth == "NONE" {
 			httpClient, protocol, err := getHTTPClient(configuration)
 			if err != nil {
 				return nil, err
