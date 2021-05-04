@@ -681,6 +681,12 @@ func (c *Cursor) RowMap(ctx context.Context) map[string]interface{} {
 			} else {
 				m[columnName] = c.queue[i].StringVal.Values[c.columnIndex]
 			}
+		} else if columnType == "DATE_TYPE" {
+			if isNull(c.queue[i].StringVal.Nulls, c.columnIndex) {
+				m[columnName] = nil
+			} else {
+				m[columnName] = c.queue[i].StringVal.Values[c.columnIndex]
+			}
 		}
 	}
 	if len(m) != len(d) {
